@@ -16,7 +16,7 @@ namespace ACM
         /// True - Use IPC Archives
         /// False - Use Uva Archives
         /// </summary>
-        private const bool IPC = true;
+        private const bool IPC = false;
         private const string default_link = IPC ? "https://icpcarchive.ecs.baylor.edu/{0}" : "https://uva.onlinejudge.org/{0}";
 
         private static Regex reg = new Regex("<tr class=\"sectiontableentry[1|2]\">.*?<a href=\"(index.php.*?)\">(.*?)</a>");
@@ -26,8 +26,6 @@ namespace ACM
         static void Main(string[] args)
         {
             const string root_link = "index.php?option=com_onlinejudge&Itemid=8&category=0";
-
-            Regex rootRegex = new Regex("<tr class=\"sectiontableentry[1|2]\">.*?<td><a href=\"(.*?)\">(.*?)</a>");
 
             Task.Run(() => getItems(root_link)).Wait();
 
@@ -63,7 +61,7 @@ namespace ACM
                     if (link.Contains("show_problem"))
                     {
                         lock (problems)
-                            problems.Add(new Item() { Link = string.Format(default_link, link), Name = name, Category = currentCategory });
+                            problems.Add(new Item() { Link = string.Format(default_link, link), Name = name.Replace("\"", ""), Category = currentCategory });
                     }
                     else
                         subTasks.Add(getItems(link, $"{ currentCategory }/{ name }"));
