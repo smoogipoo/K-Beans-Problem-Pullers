@@ -8,7 +8,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Google.Spreadsheets;
 
-namespace ConsoleApplication4
+namespace CodeForces
 {
     class Program
     {
