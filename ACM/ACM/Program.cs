@@ -5,14 +5,23 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ACM
 {
     class Program
     {
-        private const string default_link = "https://icpcarchive.ecs.baylor.edu/{0}";
+        /// <summary>
+        /// True - Use IPC Archives
+        /// False - Use Uva Archives
+        /// </summary>
+        private const bool IPC = true;
+        private const string default_link = IPC ? "https://icpcarchive.ecs.baylor.edu/{0}" : "https://uva.onlinejudge.org/{0}";
+
         private static Regex reg = new Regex("<tr class=\"sectiontableentry[1|2]\">.*?<a href=\"(index.php.*?)\">(.*?)</a>");
+
+        private static List<Item> problems = new List<Item>();
 
         static void Main(string[] args)
         {
@@ -20,10 +29,7 @@ namespace ACM
 
             Regex rootRegex = new Regex("<tr class=\"sectiontableentry[1|2]\">.*?<td><a href=\"(.*?)\">(.*?)</a>");
 
-            List<Item> problems;
-
-            using (WebClient client = new WebClient())
-                problems = getItems(client, root_link);
+            Task.Run(() => getItems(root_link)).Wait();
 
             using (StreamWriter sw = new StreamWriter("results.csv"))
             {
@@ -37,28 +43,34 @@ namespace ACM
             }
         }
 
-        private static List<Item> getItems(WebClient wc, string location, string currentCategory = "")
+        private static async Task getItems(string location, string currentCategory = "")
         {
-            string rootData = wc.DownloadString(string.Format(default_link, location));
-            rootData = rootData.Replace("\n", "").Replace("\r", "").Replace("\t", "");
-
-            // Find tables
-            MatchCollection matches = reg.Matches(rootData);
-
-            List<Item> problems = new List<Item>();
-
-            foreach (Match match in matches)
+            using (WebClient wc = new WebClient())
             {
-                string name = WebUtility.HtmlDecode(match.Groups[2].Value);
-                string link = WebUtility.HtmlDecode(match.Groups[1].Value);
+                string rootData = wc.DownloadString(string.Format(default_link, location));
+                rootData = rootData.Replace("\n", "").Replace("\r", "").Replace("\t", "");
 
-                if (link.Contains("show_problem"))
-                    problems.Add(new Item() { Link = string.Format(default_link, link), Name = name, Category = currentCategory });
-                else
-                    problems.AddRange(getItems(wc, link, $"{ currentCategory }/{ name }"));
+                // Find tables
+                MatchCollection matches = reg.Matches(rootData);
+
+                List<Task> subTasks = new List<Task>();
+
+                foreach (Match match in matches)
+                {
+                    string name = WebUtility.HtmlDecode(match.Groups[2].Value);
+                    string link = WebUtility.HtmlDecode(match.Groups[1].Value);
+
+                    if (link.Contains("show_problem"))
+                    {
+                        lock (problems)
+                            problems.Add(new Item() { Link = string.Format(default_link, link), Name = name, Category = currentCategory });
+                    }
+                    else
+                        subTasks.Add(getItems(link, $"{ currentCategory }/{ name }"));
+                }
+
+                await Task.WhenAll(subTasks.ToArray());
             }
-
-            return problems;
         }
 
         struct Item
