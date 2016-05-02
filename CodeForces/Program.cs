@@ -14,6 +14,25 @@ namespace CodeForces
     {
         static void Main(string[] args)
         {
+            bool writeToGoogle = false;
+            for (int i = 0; i < args.Length; i++)
+            {
+                switch (args[i])
+                {
+                    case "-google":
+                        writeToGoogle = true;
+                        break;
+                }
+            }
+
+            Config config = new Config("codeforces.cfg");
+            string clientId = config.Get<string>("clientid");
+            string clientSecret = config.Get<string>("clientSecret");
+            string accessToken = config.Get<string>("accesstoken");
+            string refreshToken = config.Get<string>("refreshtoken");
+
+
+
             WebClient wc = new WebClient();
             string data = wc.DownloadString("http://codeforces.com/api/problemset.problems");
 
